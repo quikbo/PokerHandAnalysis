@@ -17,87 +17,63 @@ if (mysqli_connect_errno()) {
 
 // Function to get all games
 function getGames($mysqli) {
-    $games = array();
-    $query = "SELECT game_id, game_type, small_blind, big_blind FROM Game ORDER BY CAST(SUBSTRING(game_id, 2) AS UNSIGNED)";
-    if ($result = $mysqli->query($query)) {
-        while ($row = $result->fetch_assoc()) {
-            $games[] = $row;
-        }
-        $result->free();
-    }
-    return $games;
+  $games = array();
+  $query = "CALL get_all_games()";  // Stored procedure
+  if ($result = $mysqli->query($query)) {
+      while ($row = $result->fetch_assoc()) {
+          $games[] = $row;
+      }
+      $result->free();
+  }
+  return $games;
 }
 
 // Function to get hands in a game
 function getGameHands($mysqli, $gameId) {
-    $hands = array();
-    $query = "SELECT h.hand_id, h.dealer_position, h.pot_size,
-              GROUP_CONCAT(DISTINCT cc.card_id ORDER BY cc.street) AS community_cards
-              FROM Hand h
-              LEFT JOIN Community_Cards cc ON h.hand_id = cc.hand_id
-              WHERE h.game_id = ?
-              GROUP BY h.hand_id
-              ORDER BY h.hand_id";
-              
-    if ($stmt = $mysqli->prepare($query)) {
-        $stmt->bind_param("s", $gameId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            $hands[] = $row;
-        }
-        $stmt->close();
-    }
-    return $hands;
+  $hands = array();
+  $query = "CALL get_game_hands(?)";  // Stored procedure
+  if ($stmt = $mysqli->prepare($query)) {
+      $stmt->bind_param("s", $gameId);
+      $stmt->execute();
+      $result = $stmt->get_result();
+      while ($row = $result->fetch_assoc()) {
+          $hands[] = $row;
+      }
+      $stmt->close();
+  }
+  return $hands;
 }
 
 // Function to get hand actions
 function getHandActions($mysqli, $handId) {
-    $actions = array();
-    $query = "SELECT a.action_id, p.username, a.street, a.action_type, a.amount, a.action_order
-              FROM Action a
-              JOIN Player p ON a.player_id = p.player_id
-              WHERE a.hand_id = ?
-              ORDER BY a.action_order";
-              
-    if ($stmt = $mysqli->prepare($query)) {
-        $stmt->bind_param("s", $handId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            $actions[] = $row;
-        }
-        $stmt->close();
-    }
-    return $actions;
+  $actions = array();
+  $query = "CALL get_hand_actions(?)";  // Stored procedure
+  if ($stmt = $mysqli->prepare($query)) {
+      $stmt->bind_param("s", $handId);
+      $stmt->execute();
+      $result = $stmt->get_result();
+      while ($row = $result->fetch_assoc()) {
+          $actions[] = $row;
+      }
+      $stmt->close();
+  }
+  return $actions;
 }
 
 // Function to get player statistics
 function getPlayerGameStats($mysqli, $gameId) {
-    $stats = array();
-    $query = "SELECT 
-                p.username,
-                COUNT(DISTINCT pih.hand_id) as hands_played,
-                SUM(pih.amount_won) as total_profit_loss,
-                SUM(CASE WHEN a.action_type = 'raise' THEN 1 ELSE 0 END) as total_raises,
-                SUM(CASE WHEN a.action_type = 'fold' THEN 1 ELSE 0 END) as total_folds
-              FROM Player p
-              JOIN Played_In_Game pig ON p.player_id = pig.player_id
-              LEFT JOIN Played_In_Hand pih ON p.player_id = pih.player_id
-              LEFT JOIN Action a ON p.player_id = a.player_id
-              WHERE pig.game_id = ?
-              GROUP BY p.player_id, p.username";
-              
-    if ($stmt = $mysqli->prepare($query)) {
-        $stmt->bind_param("s", $gameId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            $stats[] = $row;
-        }
-        $stmt->close();
-    }
-    return $stats;
+  $stats = array();
+  $query = "CALL get_player_game_stats(?)";  // Stored procedure
+  if ($stmt = $mysqli->prepare($query)) {
+      $stmt->bind_param("s", $gameId);
+      $stmt->execute();
+      $result = $stmt->get_result();
+      while ($row = $result->fetch_assoc()) {
+          $stats[] = $row;
+      }
+      $stmt->close();
+  }
+  return $stats;
 }
 
 // Handle AJAX requests
