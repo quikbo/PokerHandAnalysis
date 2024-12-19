@@ -47,6 +47,23 @@ def parse_text_file(filename: str) -> Dict:
     
     return data
 
+
+def calculate_pot_size(actions: List[str], blinds: List[float]) -> float:
+    """Calculate total pot size by tracking all bets and raises through the hand."""
+    pot_size = sum(blinds)  # Start with blinds
+    for action in actions:
+        parts = action.split()
+        if parts[0] == 'd':  # dealer action
+            continue
+        if parts[1] in ['cbr', 'cc']:  # bet/raise or call
+            if len(parts) > 2:  # has amount
+                try:
+                    pot_size += float(parts[2])
+                except ValueError:
+                    continue
+    return pot_size
+
+
 class SQLGenerator:
     def __init__(self, game_folder: str):
         self.game_folder = game_folder
@@ -71,7 +88,7 @@ class SQLGenerator:
     def get_card_id(self, rank: str, suit: str) -> str:
         key = f"{rank}{suit}"
         if key not in self.card_ids:
-            self.card_ids[key] = f"C{rank}{suit}"
+            self.card_ids[key] = f"{rank}{suit}"
         return self.card_ids[key]
 
     def determine_street(self, actions: List[str], current_action_index: int) -> str:
@@ -168,7 +185,7 @@ class SQLGenerator:
                 )
 
         # Insert Hand
-        pot_size = abs(sum(s1 - s2 for s1, s2 in zip(hand_data['starting_stacks'], hand_data['finishing_stacks'])))/2
+        pot_size = calculate_pot_size(hand_data['actions'], hand_data['blinds_or_straddles'])
         dealer_pos = self.get_and_rotate_dealer()
         sql_statements.append(
             f"insert into Hand (hand_id, game_id, dealer_position, pot_size) values ('{hand_id}', '{game_id}', {dealer_pos}, {pot_size});"
@@ -191,7 +208,7 @@ class SQLGenerator:
 
         # Insert Community_Cards
         for i, card in enumerate(community_cards):
-            card_id = f"C{card}"
+            card_id = f"{card}"
             street = 'flop' if i < 3 else 'turn' if i == 3 else 'river'
             sql_statements.append(
                 f"insert into Community_Cards (hand_id, card_id, street) values ('{hand_id}', '{card_id}', '{street}');"
@@ -201,8 +218,8 @@ class SQLGenerator:
         for player_key, cards in hole_cards.items():
             player_num = int(player_key[1])
             player_id = self.get_player_id(hand_data['players'][player_num-1])
-            card1_id = f"C{cards[0]}"
-            card2_id = f"C{cards[1]}"
+            card1_id = f"{cards[0]}"
+            card2_id = f"{cards[1]}"
             amount_won = hand_data['finishing_stacks'][player_num-1] - hand_data['starting_stacks'][player_num-1]
             
             sql_statements.append(
@@ -234,6 +251,7 @@ class SQLGenerator:
             actions_so_far.append(action)
 
         return sql_statements
+
 
 def process_directory(directory_path: str, output_file: str = "poker_hands.sql"):
     with open(output_file, 'w') as out_file:
@@ -295,15 +313,17 @@ def process_directory(directory_path: str, output_file: str = "poker_hands.sql")
     
     print(f"\nProcessing complete. SQL statements saved to {output_file}")
 
+
 def main():
-    directory_path = './poker_hands'
-    output_file = 'poker_hands.sql'
+    directory_path = '../poker_hands'
+    output_file = '../poker_hands.sql'
     
     if not os.path.exists(directory_path):
         print(f"Error: Directory '{directory_path}' not found")
         return
         
     process_directory(directory_path, output_file)
+
 
 if __name__ == "__main__":
     main()

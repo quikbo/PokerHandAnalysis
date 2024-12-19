@@ -1,225 +1,191 @@
-<html>
-<head>
-    <title>Poker Hand Analytics</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .container { margin-top: 20px; }
-        .hand-details { margin-top: 15px; }
-    </style>
-</head>
-<body>
 <?php
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Database connection
 $mysqli = new mysqli("dbase.cs.jhu.edu", "cs415_fa24_wboudy1", "QH9OaTFq8A", "cs415_fa24_wboudy1_db");
 if (mysqli_connect_errno()) {
-    printf("Connect failed: %s<br>", mysqli_connect_error());
-    exit();
+    header('Content-Type: application/json');
+    die(json_encode(["error" => "Database connection failed: " . mysqli_connect_error()]));
 }
 
 // Function to get all games
 function getGames($mysqli) {
-  $games = array();
-  $query = "CALL get_all_games()";  // Stored procedure
-  if ($result = $mysqli->query($query)) {
-      while ($row = $result->fetch_assoc()) {
-          $games[] = $row;
-      }
-      $result->free();
-  }
-  return $games;
+    $games = array();
+    try {
+        if (!$result = $mysqli->query("CALL get_all_games()")) {
+            throw new Exception("Query failed: " . $mysqli->error);
+        }
+        
+        // Fetch results
+        while ($row = $result->fetch_assoc()) {
+            $games[] = $row;
+        }
+        
+        $result->close();
+        
+        // Clear any remaining results
+        while ($mysqli->more_results()) {
+            $mysqli->next_result();
+        }
+        
+        return $games;
+    } catch (Exception $e) {
+        throw new Exception("Error in getGames: " . $e->getMessage());
+    }
 }
 
-// Function to get hands in a game
+// Function to get game hands
 function getGameHands($mysqli, $gameId) {
-  $hands = array();
-  $query = "CALL get_game_hands(?)";  // Stored procedure
-  if ($stmt = $mysqli->prepare($query)) {
-      $stmt->bind_param("s", $gameId);
-      $stmt->execute();
-      $result = $stmt->get_result();
-      while ($row = $result->fetch_assoc()) {
-          $hands[] = $row;
-      }
-      $stmt->close();
-  }
-  return $hands;
+    $hands = array();
+    try {
+        $stmt = $mysqli->prepare("CALL get_game_hands(?)");
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $mysqli->error);
+        }
+        
+        $stmt->bind_param("s", $gameId);
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+        
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $hands[] = $row;
+        }
+        
+        $stmt->close();
+        
+        // Clear any remaining results
+        while ($mysqli->more_results()) {
+            $mysqli->next_result();
+        }
+        
+        return $hands;
+    } catch (Exception $e) {
+        throw new Exception("Error in getGameHands: " . $e->getMessage());
+    }
 }
 
 // Function to get hand actions
 function getHandActions($mysqli, $handId) {
-  $actions = array();
-  $query = "CALL get_hand_actions(?)";  // Stored procedure
-  if ($stmt = $mysqli->prepare($query)) {
-      $stmt->bind_param("s", $handId);
-      $stmt->execute();
-      $result = $stmt->get_result();
-      while ($row = $result->fetch_assoc()) {
-          $actions[] = $row;
-      }
-      $stmt->close();
-  }
-  return $actions;
+    $actions = array();
+    try {
+        $stmt = $mysqli->prepare("CALL get_hand_actions(?)");
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $mysqli->error);
+        }
+        
+        $stmt->bind_param("s", $handId);
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+        
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $actions[] = $row;
+        }
+        
+        $stmt->close();
+        
+        // Clear any remaining results
+        while ($mysqli->more_results()) {
+            $mysqli->next_result();
+        }
+        
+        return $actions;
+    } catch (Exception $e) {
+        throw new Exception("Error in getHandActions: " . $e->getMessage());
+    }
 }
 
 // Function to get player statistics
 function getPlayerGameStats($mysqli, $gameId) {
-  $stats = array();
-  $query = "CALL get_player_game_stats(?)";  // Stored procedure
-  if ($stmt = $mysqli->prepare($query)) {
-      $stmt->bind_param("s", $gameId);
-      $stmt->execute();
-      $result = $stmt->get_result();
-      while ($row = $result->fetch_assoc()) {
-          $stats[] = $row;
-      }
-      $stmt->close();
-  }
-  return $stats;
+    $stats = array();
+    try {
+        $stmt = $mysqli->prepare("CALL get_player_game_stats(?)");
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $mysqli->error);
+        }
+        
+        $stmt->bind_param("s", $gameId);
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+        
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $stats[] = $row;
+        }
+        
+        $stmt->close();
+        
+        // Clear any remaining results
+        while ($mysqli->more_results()) {
+            $mysqli->next_result();
+        }
+        
+        return $stats;
+    } catch (Exception $e) {
+        throw new Exception("Error in getPlayerGameStats: " . $e->getMessage());
+    }
 }
 
-// Handle AJAX requests
-if (isset($_GET['action'])) {
-    header('Content-Type: application/json');
+// Main request handling
+header('Content-Type: application/json');
+
+try {
+    if (!isset($_GET['action'])) {
+        throw new Exception("No action specified");
+    }
+    
+    $response = null;
     
     switch ($_GET['action']) {
         case 'getGames':
-            echo json_encode(getGames($mysqli));
+            $response = getGames($mysqli);
             break;
+            
         case 'getGameHands':
-            if (isset($_GET['gameId'])) {
-                echo json_encode(getGameHands($mysqli, $_GET['gameId']));
+            if (!isset($_GET['gameId'])) {
+                throw new Exception("No game ID provided");
             }
+            $response = getGameHands($mysqli, $_GET['gameId']);
             break;
+            
         case 'getHandActions':
-            if (isset($_GET['handId'])) {
-                echo json_encode(getHandActions($mysqli, $_GET['handId']));
+            if (!isset($_GET['handId'])) {
+                throw new Exception("No hand ID provided");
             }
+            $response = getHandActions($mysqli, $_GET['handId']);
             break;
+            
         case 'getPlayerStats':
-            if (isset($_GET['gameId'])) {
-                echo json_encode(getPlayerGameStats($mysqli, $_GET['gameId']));
+            if (!isset($_GET['gameId'])) {
+                throw new Exception("No game ID provided");
             }
+            $response = getPlayerGameStats($mysqli, $_GET['gameId']);
             break;
+            
+        default:
+            throw new Exception("Invalid action specified");
     }
+    
+    // Ensure we have a valid response
+    if ($response === null) {
+        throw new Exception("No data returned");
+    }
+    
+    echo json_encode($response, JSON_PRETTY_PRINT);
+    
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        "error" => $e->getMessage(),
+        "trace" => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)
+    ]);
+} finally {
     $mysqli->close();
-    exit;
 }
 ?>
-
-<div class="container">
-    <h1>Poker Game Analysis</h1>
-    
-    <div class="row">
-        <div class="col-md-4">
-            <h3>Select Game</h3>
-            <select id="gameSelect" class="form-select">
-                <option value="">Select a game...</option>
-                <?php
-                $games = getGames($mysqli);
-                foreach ($games as $game) {
-                    echo "<option value='{$game['game_id']}'>{$game['game_id']} - SB: {$game['small_blind']}, BB: {$game['big_blind']}</option>";
-                }
-                ?>
-            </select>
-        </div>
-        
-        <div class="col-md-8">
-            <h3>Player Statistics</h3>
-            <div id="playerStats"></div>
-        </div>
-    </div>
-    
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <h3>Hand History</h3>
-            <div id="handHistory"></div>
-        </div>
-    </div>
-</div>
-
-<br>
-<a href="poker.html" class="btn btn-primary">Back to Home</a>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    $(document).ready(function() {
-        $('#gameSelect').change(function() {
-            const gameId = $(this).val();
-            if (!gameId) return;
-
-            // Load player statistics
-            $.get(window.location.href, {
-                action: 'getPlayerStats',
-                gameId: gameId
-            }, function(data) {
-                let html = '<table class="table"><thead><tr><th>Player</th><th>Hands</th><th>Profit/Loss</th><th>Raises</th><th>Folds</th></tr></thead><tbody>';
-                data.forEach(player => {
-                    html += `<tr>
-                        <td>${player.username}</td>
-                        <td>${player.hands_played}</td>
-                        <td>${player.total_profit_loss}</td>
-                        <td>${player.total_raises}</td>
-                        <td>${player.total_folds}</td>
-                    </tr>`;
-                });
-                html += '</tbody></table>';
-                $('#playerStats').html(html);
-            });
-
-            // Load hands
-            $.get(window.location.href, {
-                action: 'getGameHands',
-                gameId: gameId
-            }, function(data) {
-                let html = '<div class="accordion" id="handsAccordion">';
-                data.forEach((hand, index) => {
-                    html += `
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#hand${index}">
-                                    Hand ${hand.hand_id} - Pot: $${hand.pot_size}
-                                </button>
-                            </h2>
-                            <div id="hand${index}" class="accordion-collapse collapse" data-hand-id="${hand.hand_id}">
-                                <div class="accordion-body">
-                                    <p>Community Cards: ${hand.community_cards || 'None'}</p>
-                                    <div class="actions-${hand.hand_id}"></div>
-                                </div>
-                            </div>
-                        </div>`;
-                });
-                html += '</div>';
-                $('#handHistory').html(html);
-            });
-        });
-
-        // Load hand actions when expanding accordion
-        $(document).on('show.bs.collapse', '.accordion-collapse', function() {
-            const handId = $(this).data('hand-id');
-            const actionsDiv = $(`.actions-${handId}`);
-            
-            $.get(window.location.href, {
-                action: 'getHandActions',
-                handId: handId
-            }, function(data) {
-                let html = '<table class="table"><thead><tr><th>Player</th><th>Street</th><th>Action</th><th>Amount</th></tr></thead><tbody>';
-                data.forEach(action => {
-                    html += `<tr>
-                        <td>${action.username}</td>
-                        <td>${action.street}</td>
-                        <td>${action.action_type}</td>
-                        <td>${action.amount || '-'}</td>
-                    </tr>`;
-                });
-                html += '</tbody></table>';
-                actionsDiv.html(html);
-            });
-        });
-    });
-</script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<?php
-$mysqli->close();
-?>
-</body>
-</html>
