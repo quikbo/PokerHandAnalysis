@@ -73,6 +73,8 @@ class SQLGenerator:
         self.action_counter = 0
         self.player_counter = 0
         self.dealer_position = 6
+        self.known_players = set()  # Track which players we've already inserted
+        self.known_cards = set()    # Track which cards we've already inserted
 
     def get_and_rotate_dealer(self) -> int:
         current_dealer = self.dealer_position
@@ -84,12 +86,24 @@ class SQLGenerator:
             self.player_counter += 1
             self.player_ids[username] = f"Player{self.player_counter}"
         return self.player_ids[username]
-        
-    def get_card_id(self, rank: str, suit: str) -> str:
-        key = f"{rank}{suit}"
-        if key not in self.card_ids:
-            self.card_ids[key] = f"{rank}{suit}"
-        return self.card_ids[key]
+
+    def get_card_info(self, card_str: str) -> tuple:
+        rank = card_str[0]
+        suit = card_str[1]
+        card_id = f"{card_str}"
+        return card_id, rank, suit
+
+    def process_cards(self, sql_statements: List[str], cards: List[str]):
+        """Process cards and add Card table inserts if needed"""
+        for card in cards:
+            card_id, rank, suit = self.get_card_info(card)
+            if card_id not in self.known_cards:
+                suit_map = {'h': 'hearts', 'd': 'diamonds', 'c': 'clubs', 's': 'spades'}
+                full_suit = suit_map.get(suit.lower(), suit)
+                sql_statements.append(
+                    f"insert into Card (card_id, suit, rank) values ('{card_id}', '{full_suit}', '{rank}');"
+                )
+                self.known_cards.add(card_id)
 
     def determine_street(self, actions: List[str], current_action_index: int) -> str:
         board_cards_seen = 0
@@ -115,25 +129,23 @@ class SQLGenerator:
         if action_code == 'f':
             return 'fold'
         elif action_code == 'cc':
-            # check or call by looking at prev actions in same street
             is_check = True
             current_street_actions = []
             for prev_action in previous_actions:
                 prev_parts = prev_action.split()
-                if prev_parts[0] == 'd' and prev_parts[1] == 'db':  # new street
+                if prev_parts[0] == 'd' and prev_parts[1] == 'db':
                     current_street_actions = []
                 elif prev_parts[0] != 'd':
                     current_street_actions.append(prev_action)
                     
             for prev_action in current_street_actions:
                 prev_parts = prev_action.split()
-                if prev_parts[1] == 'cbr':  # If there was a bet/raise before
+                if prev_parts[1] == 'cbr':
                     is_check = False
                     break
                     
             return 'check' if is_check else 'call'
         elif action_code == 'cbr':
-            # bet or raise
             is_bet = True
             current_street_actions = []
             for prev_action in previous_actions:
@@ -160,17 +172,37 @@ class SQLGenerator:
         self.hand_counter += 1
         hand_id = f"H{self.game_folder}_{self.hand_counter}"
         
-        # Insert Players
+        # Insert Players first (only if we haven't seen them before)
         for username in hand_data['players']:
             player_id = self.get_player_id(username)
-            sql_statements.append(
-                f"insert into Player (player_id, username, email, password, date_of_birth, country_of_birth, current_balance) values ('{player_id}', '{username}', '{username.lower()}@example.com', 'hashed_password', '1990-01-01', 'USA', {hand_data['starting_stacks'][0]});"
-            )
+            if player_id not in self.known_players:
+                sql_statements.append(
+                    f"insert into Player (player_id, username, email, password, country_of_birth, city_of_birth, current_balance) "
+                    f"values ('{player_id}', '{username}', '{username.lower()}@example.com', 'hashed_password', 'USA', 'New York', {hand_data['starting_stacks'][0]});"
+                )
+                self.known_players.add(player_id)
 
-        # Insert Game
+        # Process and insert all cards that will be used
+        all_cards = set()
+        for action in hand_data['actions']:
+            parts = action.split()
+            if parts[0] == 'd':
+                if parts[1] == 'dh':  # hole cards
+                    cards = parts[3]
+                    all_cards.add(cards[:2])
+                    all_cards.add(cards[2:])
+                elif parts[1] == 'db':  # board cards
+                    board_cards = [parts[2][i:i+2] for i in range(0, len(parts[2]), 2)]
+                    all_cards.update(board_cards)
+        
+        self.process_cards(sql_statements, list(all_cards))
+
+        # Insert Game (only once per game)
         if self.hand_counter == 1:
             sql_statements.append(
-                f"insert into Game (game_id, game_type, small_blind, big_blind, min_players, max_players) values ('{game_id}', {hand_data['variant']}, {hand_data['blinds_or_straddles'][0]}, {hand_data['blinds_or_straddles'][1]}, 2, 6);"
+                f"insert into Game (game_id, game_type, small_blind, big_blind, min_players, max_players) "
+                f"values ('{game_id}', '{hand_data['variant']}', {hand_data['blinds_or_straddles'][0]}, "
+                f"{hand_data['blinds_or_straddles'][1]}, 2, 6);"
             )
 
             # Insert Played_In_Game
@@ -181,14 +213,16 @@ class SQLGenerator:
             )):
                 player_id = self.get_player_id(player)
                 sql_statements.append(
-                    f"insert into Played_In_Game (player_id, game_id, buy_in_amount, seat_number, final_stack) values ('{player_id}', '{game_id}', {start_stack}, {i+1}, {end_stack});"
+                    f"insert into Played_In_Game (player_id, game_id, buy_in_amount, seat_number, final_stack) "
+                    f"values ('{player_id}', '{game_id}', {start_stack}, {i+1}, {end_stack});"
                 )
 
         # Insert Hand
         pot_size = calculate_pot_size(hand_data['actions'], hand_data['blinds_or_straddles'])
         dealer_pos = self.get_and_rotate_dealer()
         sql_statements.append(
-            f"insert into Hand (hand_id, game_id, dealer_position, pot_size) values ('{hand_id}', '{game_id}', {dealer_pos}, {pot_size});"
+            f"insert into Hand (hand_id, game_id, dealer_position, pot_size) "
+            f"values ('{hand_id}', '{game_id}', {dealer_pos}, {pot_size});"
         )
 
         # Process actions to get player hole cards and community cards
@@ -211,7 +245,8 @@ class SQLGenerator:
             card_id = f"{card}"
             street = 'flop' if i < 3 else 'turn' if i == 3 else 'river'
             sql_statements.append(
-                f"insert into Community_Cards (hand_id, card_id, street) values ('{hand_id}', '{card_id}', '{street}');"
+                f"insert into Community_Cards (hand_id, card_id, street) "
+                f"values ('{hand_id}', '{card_id}', '{street}');"
             )
 
         # Insert Played_In_Hand
@@ -223,7 +258,8 @@ class SQLGenerator:
             amount_won = hand_data['finishing_stacks'][player_num-1] - hand_data['starting_stacks'][player_num-1]
             
             sql_statements.append(
-                f"insert into Played_In_Hand (player_id, hand_id, card1_id, card2_id, final_result, hand_rank, amount_won) values ('{player_id}', '{hand_id}', '{card1_id}', '{card2_id}', 'folded', null, {amount_won});"
+                f"insert into Played_In_Hand (player_id, hand_id, card1_id, card2_id, final_result, hand_rank, amount_won) "
+                f"values ('{player_id}', '{hand_id}', '{card1_id}', '{card2_id}', 'folded', NULL, {amount_won});"
             )
 
         # Insert Action
@@ -244,7 +280,8 @@ class SQLGenerator:
                 action_id = f"A{self.game_folder}_{self.action_counter}"
                 
                 sql_statements.append(
-                    f"insert into Action (action_id, hand_id, player_id, street, action_type, amount, action_order) values ('{action_id}', '{hand_id}', '{player_id}', '{current_street}', '{action_type}', {amount}, {action_order});"
+                    f"insert into Action (action_id, hand_id, player_id, street, action_type, amount, action_order) "
+                    f"values ('{action_id}', '{hand_id}', '{player_id}', '{current_street}', '{action_type}', {amount}, {action_order});"
                 )
                 action_order += 1
             
