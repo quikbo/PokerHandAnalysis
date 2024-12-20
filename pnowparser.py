@@ -1,6 +1,5 @@
 import csv
 
-# Move player mappings to global scope
 PLAYER_MAP = {
     'bFVCtPV6Yr': 'bing',
     '1y_5Rmubr_': 'bo'
@@ -14,17 +13,14 @@ PLAYER_ID_MAP = {
 def convert_suit(card):
     if not card:
         return None
-        
     if isinstance(card, str):
         card = card.strip()
-        # Handle '10' as a special case
         if card.startswith('10'):
-            rank = 'T'  # Convert '10' to 'T'
-            suit = card[2]  # Suit is right after '10'
+            rank = 'T'  #convert 10 to T
+            suit = card[2]  
         else:
             rank = card[0]
             suit = card[1]
-        
         suit_map = {
             '♠': 's',
             '♥': 'h',
@@ -83,7 +79,6 @@ def write_sql_insert(f, table, columns, values):
 
 def parse_poker_now_log(csv_file, output_file):
     with open(output_file, 'w') as f:
-        # Initial static inserts
         write_sql_insert(f, 'Player', 
             ['player_id', 'username', 'email', 'password', 'country_of_birth', 'current_balance'],
             ['Player7', 'bing', 'bing@example.com', 'hashed_password', 'USA', 10000])
@@ -123,13 +118,10 @@ def parse_poker_now_log(csv_file, output_file):
             reader = csv.DictReader(csvfile)
             entries = list(reader)
             entries.reverse()
-            
             for entry in entries:
                 text = entry['entry']
-                
                 if '-- starting hand' in text:
                     if current_hand:
-                        # Write buffered statements from previous hand
                         write_buffered_statement('Hand',
                             ['hand_id', 'game_id', 'dealer_position', 'pot_size'],
                             [current_hand['id'], 'G200', 1, pot_size],
@@ -140,7 +132,6 @@ def parse_poker_now_log(csv_file, output_file):
                         hand_statements = []
                         other_statements = []
                         hand_num += 1
-                    
                     current_hand = {
                         'id': f'H200_{hand_num}',
                         'current_street': 'preflop'
@@ -149,25 +140,21 @@ def parse_poker_now_log(csv_file, output_file):
                     shown_hands = {}
                     pot_size = 0
                     player_investments = {}
-
-                # Track players in the hand
+                #process players
                 if 'shows' in text or 'posts' in text.lower():
                     player = text.split(' @ ')[1].split('"')[0]
                     hand_players.add(player)
-
-                # Process shown hands
+                #process hole cards
                 if 'shows a' in text:
                     player = text.split(' @ ')[1].split('"')[0]
                     cards_text = text.split('shows a ')[1].strip('.')
                     card1, card2 = parse_cards(cards_text)
                     shown_hands[player] = (card1, card2)
-                
-                # Track "Your hand is" messages
                 elif 'Your hand is' in text:
                     cards_text = text.split('Your hand is ')[1]
                     card1, card2 = parse_cards(cards_text)
                     shown_hands['bFVCtPV6Yr'] = (card1, card2)
-
+                #community cards
                 elif any(s in text for s in ['Flop:', 'Turn:', 'River:']):
                     if 'Flop:' in text:
                         current_hand['current_street'] = 'flop'
@@ -188,14 +175,12 @@ def parse_poker_now_log(csv_file, output_file):
                         write_buffered_statement('Community_Cards',
                             ['hand_id', 'card_id', 'street'],
                             [current_hand['id'], convert_suit(card.strip()), 'river'])
-
-                # Track betting actions and pot size
+                #actions & pot size calcs
                 elif any(action in text.lower() for action in ['posts', 'raises', 'calls', 'folds', 'checks']):
                     if current_hand:
                         player = get_player_id(text.split(' @ ')[1].split('"')[0])
                         action_type = get_action_type(text)
                         amount = None
-
                         if 'raises to' in text:
                             new_amount = float(text.split('raises to ')[1].split()[0])
                             amount = new_amount - player_investments.get(player, 0)
@@ -209,20 +194,17 @@ def parse_poker_now_log(csv_file, output_file):
                             amount = float(text.split('of ')[1])
                             player_investments[player] = player_investments.get(player, 0) + amount
                             pot_size += amount
-                        
                         write_buffered_statement('Action',
                             ['action_id', 'hand_id', 'player_id', 'street', 'action_type', 'amount', 'action_order'],
                             [f'A{hand_num}_{action_num}', current_hand['id'], 
                              player, current_hand['current_street'],
                              action_type, amount, action_num])
                         action_num += 1
-
-                # In the 'collected' section:
+                #final results
                 elif 'collected' in text:
                     player = get_player_id(text.split(' @ ')[1].split('"')[0])
                     amount_won = float(text.split('collected ')[1].split(' from')[0])
-                    
-                    # Calculate profit/loss for all players
+        
                     for p_id, invested in player_investments.items():
                         player_code = [k for k, v in PLAYER_MAP.items() if PLAYER_ID_MAP[v] == p_id][0]
                         cards = shown_hands.get(player_code, (None, None))
@@ -231,9 +213,7 @@ def parse_poker_now_log(csv_file, output_file):
                             ['player_id', 'hand_id', 'card1_id', 'card2_id', 'final_result', 'hand_rank', 'amount_won'],
                             [p_id, current_hand['id'], cards[0], cards[1], final_result, None, final_result])
 
-                # And in the "ending hand" section:
                 if '-- ending hand' in text:
-                    # Process any unshown hands
                     for player in hand_players - set(shown_hands.keys()):
                         if player not in player_investments:
                             continue
@@ -243,8 +223,6 @@ def parse_poker_now_log(csv_file, output_file):
                             ['player_id', 'hand_id', 'card1_id', 'card2_id', 'final_result', 'hand_rank', 'amount_won'],
                             [get_player_id(player), current_hand['id'], None, None, final_result, None, final_result])
                     action_num = 1
-
-        # Write the last hand if exists
         if current_hand:
             write_buffered_statement('Hand',
                 ['hand_id', 'game_id', 'dealer_position', 'pot_size'],

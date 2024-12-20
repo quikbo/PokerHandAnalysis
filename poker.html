@@ -1,4 +1,3 @@
-<!-- poker.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -18,7 +17,6 @@
         <h2>Poker Hand Analytics</h2>
 
         <form id="pokerForm">
-            <!-- Game Analysis Section -->
             <div class="form-group">
                 <h4>Game Analysis</h4>
                 <label for="analysis_type">Select Analysis Type:</label>
@@ -31,19 +29,15 @@
                 </select>
             </div>
 
-            <!-- Game Selection -->
             <div class="form-group" id="gameIdGroup" style="display: none;">
                 <label for="gameId">Game ID:</label>
                 <input type="text" class="form-control" name="gameId" id="gameId" placeholder="Enter Game ID (e.g., G30)">
             </div>
 
-            <!-- Hand Selection -->
             <div class="form-group" id="handIdGroup" style="display: none;">
                 <label for="handId">Hand ID:</label>
                 <input type="text" class="form-control" name="handId" id="handId" placeholder="Enter Hand ID (e.g., H30_1)">
             </div>
-
-    
 
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">View Results</button>
@@ -58,23 +52,16 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Show/hide fields based on analysis type
             $('#analysis_type').change(function() {
                 const analysisType = $(this).val();
-                
-                // Reset visibility
                 $('#gameIdGroup').hide();
                 $('#handIdGroup').hide();
-                
-                // Show relevant fields based on selection
                 if (analysisType === 'getPlayerStats' || analysisType === 'getGameHands') {
                     $('#gameIdGroup').show();
                 } else if (analysisType === 'getHandActions') {
                     $('#handIdGroup').show();
                 }
             });
-
-            // Form submission
             $('#pokerForm').submit(function(e) {
                 e.preventDefault();
                 
@@ -83,19 +70,14 @@
                     alert('Please select an analysis type');
                     return;
                 }
-
-                // Validate required fields
                 if ((analysisType === 'getPlayerStats' || analysisType === 'getGameHands') && !$('#gameId').val()) {
                     alert('Please enter a Game ID');
                     return;
                 }
-
                 if (analysisType === 'getHandActions' && !$('#handId').val()) {
                     alert('Please enter a Hand ID');
                     return;
                 }
-
-                // Collect form data
                 const formData = {
                     action: analysisType,
                     gameId: $('#gameId').val(),
@@ -105,12 +87,10 @@
                     showProfitLoss: $('#showProfitLoss').is(':checked'),
                     showCards: $('#showCards').is(':checked')
                 };
-
-                // Make AJAX request
                 $.ajax({
                     url: 'poker.php',
                     data: formData,
-                    dataType: 'json',  // Expect JSON response
+                    dataType: 'json',
                     success: function(data) {
                         if (data.error) {
                             $('#results').html('<div class="alert alert-danger">Error: ' + data.error + '</div>');
@@ -125,12 +105,8 @@
                     }
                 });
             });
-
-            // Function to display results
-            // Replace the displayResults function with this updated version
             function displayResults(data, type) {
                 let html = '<div class="mt-4">';
-                
                 switch(type) {
                     case 'getGames':
                         html += '<h3>Games List</h3><table class="table table-striped">';
@@ -144,7 +120,6 @@
                         });
                         html += '</tbody></table>';
                         break;
-
                     case 'getPlayerStats':
                         html += '<h3>Player Statistics</h3><table class="table table-striped">';
                         html += '<thead><tr><th>Player</th><th>Hands Played</th><th>Profit/Loss</th><th>Total Checks</th><th>Total Calls</th><th>Total Bets</th><th>Total Raises</th><th>Total Folds</th></tr></thead><tbody>';
@@ -175,7 +150,6 @@
                         });
                         html += '</tbody></table>';
                         break;
-
                     case 'getHandActions':
                         html += '<h3>Hand Actions</h3><table class="table table-striped">';
                         html += '<thead><tr><th>Player</th><th>Street</th><th>Action</th><th>Amount</th></tr></thead><tbody>';
@@ -190,11 +164,9 @@
                         html += '</tbody></table>';
                         break;
                 }
-                
                 html += '</div>';
                 $('#results').html(html);
             }
-                
                 html += '</div>';
                 $('#results').html(html);
             }

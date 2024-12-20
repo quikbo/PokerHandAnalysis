@@ -4,7 +4,6 @@ import ast
 
 
 def parse_text_file(filename: str) -> Dict:
-    'open and parse text file into dict'
     data = {}
     with open(filename, 'r') as file:
         for line in file:
@@ -47,9 +46,8 @@ def parse_text_file(filename: str) -> Dict:
     
     return data
 
-
+#Calculate total pot size by tracking all bets and raises through the hand.
 def calculate_pot_size(actions: List[str], blinds: List[float]) -> float:
-    """Calculate total pot size by tracking all bets and raises through the hand."""
     pot_size = sum(blinds)  # Start with blinds
     for action in actions:
         parts = action.split()
@@ -92,18 +90,6 @@ class SQLGenerator:
         suit = card_str[1]
         card_id = f"{card_str}"
         return card_id, rank, suit
-
-    def process_cards(self, sql_statements: List[str], cards: List[str]):
-        """Process cards and add Card table inserts if needed"""
-        for card in cards:
-            card_id, rank, suit = self.get_card_info(card)
-            if card_id not in self.known_cards:
-                suit_map = {'h': 'hearts', 'd': 'diamonds', 'c': 'clubs', 's': 'spades'}
-                full_suit = suit_map.get(suit.lower(), suit)
-                sql_statements.append(
-                    f"insert into Card (card_id, suit, rank) values ('{card_id}', '{full_suit}', '{rank}');"
-                )
-                self.known_cards.add(card_id)
 
     def determine_street(self, actions: List[str], current_action_index: int) -> str:
         board_cards_seen = 0
@@ -182,22 +168,7 @@ class SQLGenerator:
                 )
                 self.known_players.add(player_id)
 
-        # Process and insert all cards that will be used
-        all_cards = set()
-        for action in hand_data['actions']:
-            parts = action.split()
-            if parts[0] == 'd':
-                if parts[1] == 'dh':  # hole cards
-                    cards = parts[3]
-                    all_cards.add(cards[:2])
-                    all_cards.add(cards[2:])
-                elif parts[1] == 'db':  # board cards
-                    board_cards = [parts[2][i:i+2] for i in range(0, len(parts[2]), 2)]
-                    all_cards.update(board_cards)
-        
-        self.process_cards(sql_statements, list(all_cards))
-
-        # Insert Game (only once per game)
+        # Insert Game 
         if self.hand_counter == 1:
             sql_statements.append(
                 f"insert into Game (game_id, game_type, small_blind, big_blind, min_players, max_players) "
@@ -354,11 +325,9 @@ def process_directory(directory_path: str, output_file: str = "poker_hands.sql")
 def main():
     directory_path = '../poker_hands'
     output_file = '../poker_hands.sql'
-    
     if not os.path.exists(directory_path):
         print(f"Error: Directory '{directory_path}' not found")
         return
-        
     process_directory(directory_path, output_file)
 
 

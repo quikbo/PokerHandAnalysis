@@ -1,5 +1,3 @@
-
-
 CREATE TABLE Player (
     player_id VARCHAR(12) PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -10,6 +8,7 @@ CREATE TABLE Player (
     current_balance FLOAT(15,2) NOT NULL
 );
 
+
 CREATE TABLE Game (
     game_id VARCHAR(12) PRIMARY KEY,
     game_type VARCHAR(20) NOT NULL,
@@ -19,11 +18,13 @@ CREATE TABLE Game (
     max_players INT NOT NULL
 );
 
+
 CREATE TABLE Card (
     card_id VARCHAR(12) PRIMARY KEY,
     suit VARCHAR(10) NOT NULL,
     rank CHAR(1) NOT NULL
 );
+
 
 CREATE TABLE Hand (
     hand_id VARCHAR(12) PRIMARY KEY,
@@ -32,6 +33,7 @@ CREATE TABLE Hand (
     pot_size FLOAT(15,2) NOT NULL DEFAULT 0.00,
     FOREIGN KEY (game_id) REFERENCES Game(game_id)
 );
+
 
 CREATE TABLE Played_In_Game (
     player_id VARCHAR(12),
@@ -44,6 +46,7 @@ CREATE TABLE Played_In_Game (
     FOREIGN KEY (game_id) REFERENCES Game(game_id)
 );
 
+
 CREATE TABLE Community_Cards (
     hand_id VARCHAR(12),
     card_id VARCHAR(12),
@@ -52,6 +55,7 @@ CREATE TABLE Community_Cards (
     FOREIGN KEY (hand_id) REFERENCES Hand(hand_id),
     FOREIGN KEY (card_id) REFERENCES Card(card_id)
 );
+
 
 CREATE TABLE Played_In_Hand (
     player_id VARCHAR(12),
@@ -67,8 +71,6 @@ CREATE TABLE Played_In_Hand (
     FOREIGN KEY (card1_id) REFERENCES Card(card_id),
     FOREIGN KEY (card2_id) REFERENCES Card(card_id)
 );
-
-
 
 
 CREATE TABLE Action (

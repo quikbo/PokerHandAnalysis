@@ -1,6 +1,4 @@
 DELIMITER //
-
--- Get all games
 CREATE PROCEDURE get_all_games()
 BEGIN
     SELECT game_id, game_type, small_blind, big_blind 
@@ -8,7 +6,7 @@ BEGIN
     ORDER BY CAST(SUBSTRING(game_id, 2) AS UNSIGNED);
 END //
 
--- Get hands in a game
+
 CREATE PROCEDURE get_game_hands(IN game_id_param VARCHAR(50))
 BEGIN
     SELECT h.hand_id, h.dealer_position, h.pot_size,
@@ -20,7 +18,7 @@ BEGIN
     ORDER BY h.hand_id;
 END //
 
--- Get hand actions
+
 CREATE PROCEDURE get_hand_actions(IN hand_id_param VARCHAR(50))
 BEGIN
     SELECT a.action_id, p.username, a.street, a.action_type, a.amount, a.action_order
@@ -29,6 +27,7 @@ BEGIN
     WHERE a.hand_id = hand_id_param
     ORDER BY a.action_order;
 END //
+
 
 CREATE PROCEDURE get_player_game_stats(IN game_id_param VARCHAR(50))
 BEGIN

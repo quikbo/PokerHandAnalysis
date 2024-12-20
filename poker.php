@@ -1,16 +1,13 @@
 <?php
-// Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Database connection
 $mysqli = new mysqli("dbase.cs.jhu.edu", "cs415_fa24_wboudy1", "QH9OaTFq8A", "cs415_fa24_wboudy1_db");
 if (mysqli_connect_errno()) {
     header('Content-Type: application/json');
     die(json_encode(["error" => "Database connection failed: " . mysqli_connect_error()]));
 }
 
-// Function to get all games
 function getGames($mysqli) {
     $games = array();
     try {
@@ -18,14 +15,12 @@ function getGames($mysqli) {
             throw new Exception("Query failed: " . $mysqli->error);
         }
         
-        // Fetch results
         while ($row = $result->fetch_assoc()) {
             $games[] = $row;
         }
         
         $result->close();
         
-        // Clear any remaining results
         while ($mysqli->more_results()) {
             $mysqli->next_result();
         }
@@ -36,7 +31,6 @@ function getGames($mysqli) {
     }
 }
 
-// Function to get game hands
 function getGameHands($mysqli, $gameId) {
     $hands = array();
     try {
@@ -57,7 +51,6 @@ function getGameHands($mysqli, $gameId) {
         
         $stmt->close();
         
-        // Clear any remaining results
         while ($mysqli->more_results()) {
             $mysqli->next_result();
         }
@@ -68,7 +61,6 @@ function getGameHands($mysqli, $gameId) {
     }
 }
 
-// Function to get hand actions
 function getHandActions($mysqli, $handId) {
     $actions = array();
     try {
@@ -89,7 +81,6 @@ function getHandActions($mysqli, $handId) {
         
         $stmt->close();
         
-        // Clear any remaining results
         while ($mysqli->more_results()) {
             $mysqli->next_result();
         }
@@ -100,7 +91,6 @@ function getHandActions($mysqli, $handId) {
     }
 }
 
-// Function to get player statistics
 function getPlayerGameStats($mysqli, $gameId) {
     $stats = array();
     try {
@@ -121,7 +111,6 @@ function getPlayerGameStats($mysqli, $gameId) {
         
         $stmt->close();
         
-        // Clear any remaining results
         while ($mysqli->more_results()) {
             $mysqli->next_result();
         }
@@ -132,7 +121,8 @@ function getPlayerGameStats($mysqli, $gameId) {
     }
 }
 
-// Main request handling
+
+
 header('Content-Type: application/json');
 
 try {
@@ -172,7 +162,6 @@ try {
             throw new Exception("Invalid action specified");
     }
     
-    // Ensure we have a valid response
     if ($response === null) {
         throw new Exception("No data returned");
     }
