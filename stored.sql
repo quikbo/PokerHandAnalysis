@@ -30,19 +30,23 @@ BEGIN
     ORDER BY a.action_order;
 END //
 
--- Get player statistics
 CREATE PROCEDURE get_player_game_stats(IN game_id_param VARCHAR(50))
 BEGIN
     SELECT 
         p.username,
-        COUNT(DISTINCT pih.hand_id) as hands_played,
-        SUM(pih.amount_won) as total_profit_loss,
-        SUM(CASE WHEN a.action_type = 'raise' THEN 1 ELSE 0 END) as total_raises,
-        SUM(CASE WHEN a.action_type = 'fold' THEN 1 ELSE 0 END) as total_folds
+        COUNT(DISTINCT CASE WHEN h.game_id = game_id_param THEN pih.hand_id END) as hands_played,
+        SUM(CASE WHEN h.game_id = game_id_param THEN pih.amount_won ELSE 0 END) as total_profit_loss,
+        SUM(CASE WHEN h.game_id = game_id_param AND a.action_type = 'bet' THEN 1 ELSE 0 END) as total_bets,
+        SUM(CASE WHEN h.game_id = game_id_param AND a.action_type = 'raise' THEN 1 ELSE 0 END) as total_raises,
+        SUM(CASE WHEN h.game_id = game_id_param AND a.action_type = 'fold' THEN 1 ELSE 0 END) as total_folds,
+        SUM(CASE WHEN h.game_id = game_id_param AND a.action_type = 'call' THEN 1 ELSE 0 END) as total_calls,
+        SUM(CASE WHEN h.game_id = game_id_param AND a.action_type = 'check' THEN 1 ELSE 0 END) as total_checks
     FROM Player p
-    JOIN Played_In_Game pig ON p.player_id = pig.player_id
+    JOIN Played_In_Game pig ON p.player_id = pig.player_id AND pig.game_id = game_id_param
     LEFT JOIN Played_In_Hand pih ON p.player_id = pih.player_id
-    LEFT JOIN Action a ON p.player_id = a.player_id
-    WHERE pig.game_id = game_id_param
+    LEFT JOIN Hand h ON pih.hand_id = h.hand_id
+    LEFT JOIN Action a ON a.hand_id = h.hand_id AND a.player_id = p.player_id
     GROUP BY p.player_id, p.username;
-END //
+END//
+
+

@@ -201,7 +201,7 @@ class SQLGenerator:
         if self.hand_counter == 1:
             sql_statements.append(
                 f"insert into Game (game_id, game_type, small_blind, big_blind, min_players, max_players) "
-                f"values ('{game_id}', '{hand_data['variant']}', {hand_data['blinds_or_straddles'][0]}, "
+                f"values ('{game_id}', {hand_data['variant']}, {hand_data['blinds_or_straddles'][0]}, "
                 f"{hand_data['blinds_or_straddles'][1]}, 2, 6);"
             )
 

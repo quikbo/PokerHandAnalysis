@@ -7,8 +7,8 @@ PLAYER_MAP = {
 }
 
 PLAYER_ID_MAP = {
-    'bing': 'Player1',
-    'bo': 'Player2'
+    'bing': 'Player7',
+    'bo': 'Player8'
 }
 
 def convert_suit(card):
@@ -61,10 +61,10 @@ def get_player_id(player_name):
     try:
         unique_code = player_name.split(' @ ')[1].split('"')[0] if ' @ ' in player_name else player_name
         username = PLAYER_MAP.get(unique_code, player_name)
-        return PLAYER_ID_MAP.get(username, 'Player1')
+        return PLAYER_ID_MAP.get(username, 'Player7')
     except Exception:
         print(f"Error processing player name: {player_name}")
-        return 'Player1'
+        return 'Player7'
 
 def parse_cards(card_text):
     if not card_text:
@@ -86,19 +86,19 @@ def parse_poker_now_log(csv_file, output_file):
         # Initial static inserts
         write_sql_insert(f, 'Player', 
             ['player_id', 'username', 'email', 'password', 'country_of_birth', 'current_balance'],
-            ['Player1', 'bing', 'bing@example.com', 'hashed_password', 'USA', 10000])
+            ['Player7', 'bing', 'bing@example.com', 'hashed_password', 'USA', 10000])
         write_sql_insert(f, 'Player',
             ['player_id', 'username', 'email', 'password', 'country_of_birth', 'current_balance'],
-            ['Player2', 'bo', 'bo@example.com', 'hashed_password', 'USA', 10000])
+            ['Player8', 'bo', 'bo@example.com', 'hashed_password', 'USA', 10000])
         write_sql_insert(f, 'Game',
             ['game_id', 'game_type', 'small_blind', 'big_blind', 'min_players', 'max_players'],
             ['G200', 'NT', 0.10, 0.20, 2, 2])
         write_sql_insert(f, 'Played_In_Game',
             ['player_id', 'game_id', 'buy_in_amount', 'seat_number', 'final_stack'],
-            ['Player1', 'G200', 10000, 1, 10000])
+            ['Player7', 'G200', 10000, 1, 10000])
         write_sql_insert(f, 'Played_In_Game',
             ['player_id', 'game_id', 'buy_in_amount', 'seat_number', 'final_stack'],
-            ['Player2', 'G200', 10000, 2, 10000])
+            ['Player8', 'G200', 10000, 2, 10000])
         f.write('\n')
 
         current_hand = None

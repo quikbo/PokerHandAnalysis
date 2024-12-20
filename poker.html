@@ -43,43 +43,7 @@
                 <input type="text" class="form-control" name="handId" id="handId" placeholder="Enter Hand ID (e.g., H30_1)">
             </div>
 
-            <!-- Filter Options -->
-            <div class="form-group">
-                <h4>Additional Filters</h4>
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input" id="showProfitLoss" name="showProfitLoss">
-                    <label class="form-check-label" for="showProfitLoss">Show Profit/Loss</label>
-                </div>
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input" id="showCards" name="showCards">
-                    <label class="form-check-label" for="showCards">Show Cards</label>
-                </div>
-            </div>
-
-            <!-- Street Filter -->
-            <div class="form-group">
-                <label for="street">Filter by Street:</label>
-                <select name="street" id="street" class="form-select">
-                    <option value="">All Streets</option>
-                    <option value="preflop">Preflop</option>
-                    <option value="flop">Flop</option>
-                    <option value="turn">Turn</option>
-                    <option value="river">River</option>
-                </select>
-            </div>
-
-            <!-- Action Type Filter -->
-            <div class="form-group">
-                <label for="action_type">Filter by Action:</label>
-                <select name="action_type" id="action_type" class="form-select">
-                    <option value="">All Actions</option>
-                    <option value="fold">Fold</option>
-                    <option value="check">Check</option>
-                    <option value="call">Call</option>
-                    <option value="bet">Bet</option>
-                    <option value="raise">Raise</option>
-                </select>
-            </div>
+    
 
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">View Results</button>
@@ -144,7 +108,7 @@
 
                 // Make AJAX request
                 $.ajax({
-                    url: 'test.php',
+                    url: 'poker.php',
                     data: formData,
                     dataType: 'json',  // Expect JSON response
                     success: function(data) {
@@ -163,19 +127,19 @@
             });
 
             // Function to display results
+            // Replace the displayResults function with this updated version
             function displayResults(data, type) {
                 let html = '<div class="mt-4">';
                 
                 switch(type) {
                     case 'getGames':
                         html += '<h3>Games List</h3><table class="table table-striped">';
-                        html += '<thead><tr><th>Game ID</th><th>Date</th><th>Small Blind</th><th>Big Blind</th></tr></thead><tbody>';
+                        html += '<thead><tr><th>Game ID</th><th>Small Blind</th><th>Big Blind</th></tr></thead><tbody>';
                         data.forEach(game => {
                             html += `<tr>
                                 <td>${game.game_id}</td>
-                                <td>${game.game_date}</td>
-                                <td>$${game.small_blind}</td>
-                                <td>$${game.big_blind}</td>
+                                <td>$${parseInt(game.small_blind)}</td>
+                                <td>$${parseInt(game.big_blind)}</td>
                             </tr>`;
                         });
                         html += '</tbody></table>';
@@ -183,14 +147,17 @@
 
                     case 'getPlayerStats':
                         html += '<h3>Player Statistics</h3><table class="table table-striped">';
-                        html += '<thead><tr><th>Player</th><th>Hands Played</th><th>Profit/Loss</th><th>Total Raises</th><th>Total Folds</th></tr></thead><tbody>';
+                        html += '<thead><tr><th>Player</th><th>Hands Played</th><th>Profit/Loss</th><th>Total Checks</th><th>Total Calls</th><th>Total Bets</th><th>Total Raises</th><th>Total Folds</th></tr></thead><tbody>';
                         data.forEach(stat => {
                             html += `<tr>
                                 <td>${stat.username}</td>
-                                <td>${stat.hands_played}</td>
-                                <td>$${stat.total_profit_loss}</td>
-                                <td>${stat.total_raises}</td>
-                                <td>${stat.total_folds}</td>
+                                <td>${parseInt(stat.hands_played)}</td>
+                                <td>$${parseInt(stat.total_profit_loss)}</td>
+                                <td>${parseInt(stat.total_checks)}</td>
+                                <td>${parseInt(stat.total_calls)}</td>
+                                <td>${parseInt(stat.total_bets)}</td>
+                                <td>${parseInt(stat.total_raises)}</td>
+                                <td>${parseInt(stat.total_folds)}</td>        
                             </tr>`;
                         });
                         html += '</tbody></table>';
@@ -202,7 +169,7 @@
                         data.forEach(hand => {
                             html += `<tr>
                                 <td>${hand.hand_id}</td>
-                                <td>$${hand.pot_size}</td>
+                                <td>$${parseInt(hand.pot_size)}</td>
                                 <td>${hand.community_cards || 'N/A'}</td>
                             </tr>`;
                         });
@@ -217,7 +184,7 @@
                                 <td>${action.username}</td>
                                 <td>${action.street}</td>
                                 <td>${action.action_type}</td>
-                                <td>${action.amount ? '$' + action.amount : '-'}</td>
+                                <td>${action.amount ? '$' + parseInt(action.amount) : '-'}</td>
                             </tr>`;
                         });
                         html += '</tbody></table>';
@@ -227,7 +194,11 @@
                 html += '</div>';
                 $('#results').html(html);
             }
-        });
+                
+                html += '</div>';
+                $('#results').html(html);
+            }
+        );
     </script>
 </body>
 </html>
